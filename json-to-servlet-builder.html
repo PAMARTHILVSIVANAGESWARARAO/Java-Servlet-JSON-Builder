@@ -144,6 +144,36 @@
 <li><code>null literal</code> → writes the literal JSON <code>null</code>, ignores the variable name</li>
 </ul>
 </div>
+    <code>
+        // Online Java Compiler
+// Use this editor to write, compile and run your Java code online
+
+class Main {
+    public static void main(String[] args) {
+        String str = """
+  [
+    {
+      "id": 1,
+      "name": "Siva Nagu",
+      "age": 19,
+      "department": "CSE"
+    },
+    {
+      "id": 2,
+      "name": "Durga Siva ",
+      "age": 21,
+      "department": "CSE"
+    },"""; // Added closing bracket, triple quotes, and semicolon
+
+    if (str.endsWith(",")) {
+    str = str.substring(0, str.length() - 1);
+}
+    str+="]";
+    System.out.println(str);
+    }
+}
+
+    </code>
 
 <script>
 let rowCount = 0;
