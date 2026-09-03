@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java Servlet JSON Builder</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        max-width: 950px;
+        margin: 40px auto;
+        padding: 0 20px;
+        color: #222;
+    }
+    h2 { margin-bottom: 4px; }
+    p.hint { color: #555; margin-top: 4px; }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 18px;
+    }
+    th {
+        text-align: left;
+        font-size: 13px;
+        color: #555;
+        padding: 6px 8px;
+        border-bottom: 2px solid #ddd;
+    }
+    td {
+        padding: 6px 8px;
+        border-bottom: 1px solid #eee;
+    }
+    input[type=text], select {
+        width: 100%;
+        padding: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+    .rowbtn {
+        background: #d9363e;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-size: 13px;
+    }
+    .rowbtn:hover { background: #b22a30; }
+
+    .toolbar {
+        margin-top: 14px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    button {
+        padding: 10px 20px;
+        font-size: 15px;
+        cursor: pointer;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 6px;
+    }
+    button:hover { background: #1e4fc4; }
+    .addbtn { background: #16a34a; }
+    .addbtn:hover { background: #128038; }
+    .copybtn { background: #444; }
+    .copybtn:hover { background: #222; }
+
+    label.checkbox {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+        color: #333;
+    }
+
+    pre {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        padding: 18px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        border-radius: 6px;
+        margin-top: 18px;
+        font-size: 14.5px;
+        min-height: 30px;
+    }
+    .legend {
+        background: #f6f7f9;
+        border: 1px solid #e2e2e2;
+        border-radius: 6px;
+        padding: 12px 18px;
+        margin-top: 20px;
+        font-size: 13.5px;
+        color: #444;
+    }
+    .legend code { background: #eee; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<h2>Java Servlet JSON Builder (menu driven)</h2>
+<p class="hint">Add each field, pick its Java type, and generate the exact <code>out.println()</code> line — no guessing involved.</p>
+
+<table id="fieldsTable">
+    <thead>
+        <tr>
+            <th style="width:28%">JSON key</th>
+            <th style="width:28%">Java variable</th>
+            <th style="width:28%">Type</th>
+            <th style="width:16%"></th>
+        </tr>
+    </thead>
+    <tbody id="fieldsBody"></tbody>
+</table>
+
+<div class="toolbar">
+    <button class="addbtn" onclick="addRow()">+ Add Field</button>
+    <label class="checkbox">
+        <input type="checkbox" id="wrapArray"> Wrap in array <code>[ ]</code>
+    </label>
+</div>
+
+<div class="toolbar">
+    <button onclick="generate()">Generate out.println()</button>
+    <button class="copybtn" onclick="copyOutput()">Copy Output</button>
+</div>
+
+<pre id="output"></pre>
+
+<div class="legend">
+<b>Type meaning:</b>
+<ul>
+<li><code>String</code> → variable is wrapped in quotes: <code>\"name\":\"" + name + "\"</code></li>
+<li><code>Number / int / double / long</code> → no quotes: <code>\"id\":" + id + "</code></li>
+<li><code>Boolean</code> → no quotes: <code>\"active\":" + active + "</code></li>
+<li><code>Raw / already-JSON expression</code> → inserted as-is, no quotes added (use for nested objects/arrays you built separately)</li>
+<li><code>null literal</code> → writes the literal JSON <code>null</code>, ignores the variable name</li>
+</ul>
+</div>
+
+<script>
+let rowCount = 0;
+
+function addRow(key = '', variable = '', type = 'string') {
+    rowCount++;
+    const tbody = document.getElementById('fieldsBody');
+    const tr = document.createElement('tr');
+    tr.dataset.id = rowCount;
+    tr.innerHTML = `
+        <td><input type="text" class="key" placeholder="e.g. id" value="${key}"></td>
+        <td><input type="text" class="variable" placeholder="blank = uses key name" value="${variable}"></td>
+        <td>
+            <select class="type">
+                <option value="string" ${type==='string'?'selected':''}>String</option>
+                <option value="number" ${type==='number'?'selected':''}>Number (int/double/long)</option>
+                <option value="boolean" ${type==='boolean'?'selected':''}>Boolean</option>
+                <option value="raw" ${type==='raw'?'selected':''}>Raw / already-JSON</option>
+                <option value="null" ${type==='null'?'selected':''}>null literal</option>
+            </select>
+        </td>
+        <td><button class="rowbtn" onclick="removeRow(${rowCount})">Remove</button></td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function removeRow(id) {
+    const row = document.querySelector(`tr[data-id="${id}"]`);
+    if (row) row.remove();
+}
+
+function generate() {
+    const rows = document.querySelectorAll('#fieldsBody tr');
+    const fields = [];
+    rows.forEach(row => {
+        const key = row.querySelector('.key').value.trim();
+        const variable = row.querySelector('.variable').value.trim();
+        const type = row.querySelector('.type').value;
+        if (key) fields.push({ key, variable, type });
+    });
+
+    if (fields.length === 0) {
+        document.getElementById('output').textContent = '// Add at least one field first.';
+        return;
+    }
+
+    let body = '{';
+    fields.forEach((f, idx) => {
+        // if no Java variable was given, fall back to the key name itself
+        // instead of emitting broken concatenation like `+  +`
+        const variable = f.variable.trim() !== '' ? f.variable.trim() : f.key.trim();
+        body += '\\"' + f.key + '\\":';
+        switch (f.type) {
+            case 'string':
+                body += '\\"" + ' + variable + ' + "\\"';
+                break;
+            case 'number':
+            case 'boolean':
+            case 'raw':
+                body += '" + ' + variable + ' + "';
+                break;
+            case 'null':
+                body += 'null';
+                break;
+        }
+        if (idx < fields.length - 1) body += ',';
+    });
+    body += '}';
+
+    if (document.getElementById('wrapArray').checked) {
+        body = '[' + body + ']';
+    }
+
+    const result = 'out.println("' + body + '");';
+    document.getElementById('output').textContent = result;
+}
+
+function copyOutput() {
+    const text = document.getElementById('output').textContent;
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.copybtn');
+        const old = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = old, 1200);
+    });
+}
+
+// preload with the user's exact example: id (int), name (String)
+addRow('id', 'id', 'number');
+addRow('name', 'name', 'string');
+generate();
+</script>
+
+</body>
+</html>
